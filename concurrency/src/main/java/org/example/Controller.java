@@ -31,7 +31,7 @@ public class Controller {
                     running = false;
                     break;
                 default:
-                    System.out.println("Invalid option. Please enter 1 or 2.");
+                    System.out.println("Invalid option.. Please enter 1 or 2.");
             }
         }
 
