@@ -1,4 +1,4 @@
-package org.example;
+package org.example.workerpools;
 
 import java.time.Instant;
 import java.util.Scanner;
