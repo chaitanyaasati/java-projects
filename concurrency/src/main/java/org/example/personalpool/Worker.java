@@ -2,6 +2,7 @@ package org.example.personalpool;
 
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class Worker implements Runnable {
@@ -9,11 +10,14 @@ public class Worker implements Runnable {
     private final BlockingQueue<QueueEntry> taskQueue = new LinkedBlockingQueue<>();
     private boolean acceptingTasks = true;
 
-    public synchronized void submit(Task task) {
+    public synchronized CompletableFuture<String> submit(Task task) {
         if (!acceptingTasks) {
             throw new IllegalStateException("Worker has been shut down");
         }
-        taskQueue.add(QueueEntry.task(Objects.requireNonNull(task, "task")));
+
+        CompletableFuture<String> result = new CompletableFuture<>();
+        taskQueue.add(QueueEntry.task(Objects.requireNonNull(task, "task"), result));
+        return result;
     }
 
     public synchronized void shutdown() {
@@ -37,9 +41,13 @@ public class Worker implements Runnable {
 
                 try {
                     String result = entry.task().execute();
-                    System.out.println("API response: " + result);
+                    entry.result().complete(result);
+                } catch (InterruptedException e) {
+                    entry.result().completeExceptionally(e);
+                    throw e;
                 } catch (RuntimeException e) {
                     // One failed task should not terminate the worker.
+                    entry.result().completeExceptionally(e);
                     System.err.println("Task failed: " + e.getMessage());
                 }
             }
@@ -51,13 +59,17 @@ public class Worker implements Runnable {
         System.out.println("Worker completed all tasks");
     }
 
-    private record QueueEntry(Task task, boolean stop) {
-        private static QueueEntry task(Task task) {
-            return new QueueEntry(task, false);
+    private record QueueEntry(
+            Task task,
+            CompletableFuture<String> result,
+            boolean stop) {
+
+        private static QueueEntry task(Task task, CompletableFuture<String> result) {
+            return new QueueEntry(task, result, false);
         }
 
         private static QueueEntry stopEntry() {
-            return new QueueEntry(null, true);
+            return new QueueEntry(null, null, true);
         }
     }
 }
