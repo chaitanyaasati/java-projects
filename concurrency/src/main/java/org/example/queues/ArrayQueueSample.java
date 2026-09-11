@@ -1,5 +1,10 @@
 package org.example.queues;
 
+import java.util.ArrayDeque;
+import java.util.Queue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class ArrayQueueSample {
     private final Queue<Integer> queue = new ArrayDeque<>();
     private final ReentrantLock lock = new ReentrantLock();

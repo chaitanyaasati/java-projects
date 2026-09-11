@@ -1,5 +1,9 @@
 package org.example.queues;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class LinkedListQueue<T> {
     private static class Node<T> {
         T item;
