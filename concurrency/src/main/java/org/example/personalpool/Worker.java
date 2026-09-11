@@ -1,5 +1,7 @@
 package org.example.personalpool;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -30,6 +32,7 @@ public class Worker implements Runnable {
     @Override
     public void run() {
         System.out.println("Worker is running");
+        boolean interrupted = false;
 
         try {
             while (true) {
@@ -52,11 +55,35 @@ public class Worker implements Runnable {
                 }
             }
         } catch (InterruptedException e) {
+            interrupted = true;
+            failPendingTasks(e);
             Thread.currentThread().interrupt();
             System.out.println("Worker was interrupted");
         }
 
-        System.out.println("Worker completed all tasks");
+        if (!interrupted) {
+            System.out.println("Worker completed all tasks");
+        }
+    }
+
+    private void failPendingTasks(InterruptedException cause) {
+        List<QueueEntry> pendingEntries = new ArrayList<>();
+
+        // Synchronizing with submit() prevents a task from being accepted while
+        // the worker is transitioning to its stopped state.
+        synchronized (this) {
+            acceptingTasks = false;
+            taskQueue.drainTo(pendingEntries);
+        }
+
+        for (QueueEntry entry : pendingEntries) {
+            if (!entry.stop()) {
+                entry.result().completeExceptionally(
+                        new IllegalStateException(
+                                "Task was not executed because the worker was interrupted",
+                                cause));
+            }
+        }
     }
 
     private record QueueEntry(
